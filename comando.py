@@ -10,6 +10,7 @@
 # imports from python
 import webbrowser
 import locale
+import logging
 
 # needed libs you'll install
 import speech_recognition as sr
@@ -33,6 +34,10 @@ class Assistant:
         self.audio = sr.Recognizer()
         self.assistant = pyttsx3.init()
         self.language = language or locale.getdefaultlocale()[0]
+
+        # Configuração do módulo de logging
+        logging.basicConfig(filename='assistant.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
     def executa_command(self) -> str:
         '''
@@ -58,14 +63,17 @@ class Assistant:
 
                 return command
 
-        except sr.UnknownValueError:
-            print('Não foi possível entender o áudio')
+        except sr.UnknownValueError as e:
+            print(f'Não foi possível entender o áudio: {e}')
+            logging.error('Não foi possível entender o áudio')  # Adicionando mensagem de log
         except sr.RequestError as e:
             print(f'Erro na requisição ao Google: {e}')
+            logging.error(f'Erro na requisição ao Google: {e}') 
         except Exception as e:
             print(f'Algo deu errado: {e}')
+            logging.error(f'Erro: {e}') 
     
-    def command_user(self, command: str):
+    def command_user(self, command):
         '''
         A resposta do usuário é feita por esta função.
         Esta é uma versão de teste com termos em português do Brasil.
@@ -78,6 +86,10 @@ class Assistant:
         Parameters:
             command (str): O comando fornecido pelo usuário.
         '''
+        if command is None:  # Verifica se o comando é None antes de iterar sobre ele
+            print("Comando vazio recebido.")
+            return
+
         keywords_to_functions = {
             'procure por': self.search_wikipedia,
             'toque': self.play_music,
@@ -89,7 +101,7 @@ class Assistant:
         for keyword, function in keywords_to_functions.items():
             if keyword in command:
                 function(command)
-                break
+                # break
         else:
             self.default_response(command)
 
@@ -126,5 +138,14 @@ class Assistant:
 
 if __name__ == "__main__":
     assistant = Assistant()
-    user_command = assistant.executa_command()
-    assistant.command_user(user_command)
+    
+    # Laço infinito para capturar comandos de voz continuamente
+    while True:
+        user_command = assistant.executa_command()
+        
+        # Verifica se o comando de voz é para interromper o programa
+        if 'parar' in user_command:  
+            print("Encerrando o programa.")
+            break  # Sai do loop se o comando de parar for ouvido
+        else: assistant.command_user(user_command)
+
